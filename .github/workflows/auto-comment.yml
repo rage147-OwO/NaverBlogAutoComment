@@ -1,0 +1,49 @@
+name: 네이버 블로그 자동 댓글
+
+on:
+  schedule:
+    # 매일 오전 8시 (UTC 기준이므로 한국 시간 오후 5시)
+    # 한국 오전 8시로 원한다면: 0 23 * * * (전날 오후 11시)
+    - cron: '0 23 * * *'
+
+  # 수동 실행 가능
+  workflow_dispatch:
+
+jobs:
+  auto-comment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 가져오기
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 설정
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: UV 패키지 매니저 설치
+        run: pip install uv
+
+      - name: 프로젝트 의존성 설치
+        run: uv sync
+
+      - name: Playwright 브라우저 설치
+        run: uv run playwright install chromium
+
+      - name: 네이버 블로그 자동 댓글 실행
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NAVER_ID: ${{ secrets.NAVER_ID }}
+          NAVER_PASSWORD: ${{ secrets.NAVER_PASSWORD }}
+        run: uv run python main.py --count 3
+
+      - name: 댓글 기록 커밋
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add commented_posts.json 2>/dev/null || true
+          git commit -m "feat: update commented posts log [skip ci]" || true
+          git push || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

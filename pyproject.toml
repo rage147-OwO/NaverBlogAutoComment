@@ -1,0 +1,10 @@
+[project]
+name = "naver-blog-auto-comment"
+version = "0.1.0"
+description = "네이버 블로그 자동 위로 댓글 서비스 - Claude AI가 따뜻한 댓글을 자동 생성합니다"
+requires-python = ">=3.9"
+dependencies = [
+    "anthropic",
+    "playwright",
+    "python-dotenv",
+]
