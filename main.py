@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import json
 import os
+import random
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -134,9 +135,10 @@ async def run(args):
             else:
                 print("  [FAILED] 댓글 달기에 실패했습니다.")
 
-            # 포스트 간 대기 (너무 빠른 자동화 방지)
+            # 포스트 간 대기 (너무 빠른 자동화 방지 - 변동 있게)
             if i < len(posts):
-                await asyncio.sleep(5)
+                wait_time = random.uniform(12, 20)  # 12~20초 랜덤
+                await asyncio.sleep(wait_time)
 
         print(f"\n{'=' * 50}")
         print(f"  완료! 새 댓글: {new_count}개 | 건너뜀: {skip_count}개")

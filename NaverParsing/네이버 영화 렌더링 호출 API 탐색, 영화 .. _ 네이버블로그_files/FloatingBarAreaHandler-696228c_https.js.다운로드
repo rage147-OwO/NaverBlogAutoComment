@@ -1,0 +1,407 @@
+var FloatingBarArea = $Class({
+    smartEditor3Ver : 3,
+    smartEditor4Ver : 4,
+
+    $init : function(){
+        //Element
+        this.elFloatingHeader = $('floating_area_header');
+        this.elFloatingBottom = $('floating_bottom');
+        this.elFloatingSideArea = $('floating_side_area_info');
+        this.elBtnCategory = $$.getSingle('.floating_area_btn_category');
+        this.elFristPostDiv = $('post_1');
+        this.eBuddyRecommendLayer = $$.getSingle('.pop_buddy_add_lyr');
+        this.eReputationLayer = $$('.lyr_reputation');
+        this.postFooter = $("post_footer_contents");
+
+        this.showSideArea = false;
+        this.sideAreaDataLoaded = false;
+        this.targetScrollTop = this._getTargetScrollTop();
+        this.scrollTimer;
+
+        //플로팅바 노출을위한 기준 위치가 확인이 안되는경우엔 이벤트가 동작하지 않도록한다. 방어코드.
+        if (this.targetScrollTop === -1) {
+            return;
+        }
+
+        this._setEvents();
+
+        var floatingBottom = $Element(this.elFloatingBottom);
+        if(floatingBottom && floatingBottom != undefined) {
+            this.eBuddyRecommendLayer.style.bottom = "60px";
+        }
+
+        this._initInfLayer();
+        this._scrollBefore;
+    },
+
+    _isFromInfluencer : function() {
+        return gbIsInf == true && typeof InfluencerSDK != 'undefined';
+    },
+
+    //이웃 추천 레이어가 떠있으면 인플 SDK는 로딩하지 않는다.
+    //상품글인 경우 SDK는 로딩하지 않는다.
+    //BlogPost.jsp에 정의되어있음.
+    _initInfLayer : function() {
+        if(this._isFromInfluencer() == false || isRecommendedBlog == true) {
+            return;
+        }
+        var hasProductInServer = typeof (hasProduct) === 'boolean' && hasProduct;
+        var hasProductInDocument = hasProductInServer || document.querySelectorAll(".se-component.se-custom .market_product").length > 0;
+        if (hasProductInDocument) {
+            return;
+        }
+
+        this.influencerSDK = new InfluencerSDK();
+
+        var elInf = $("floating_inf");
+        var oInfOptions = {
+            env : infEnv,
+            ui : {
+                deviceType :  'pc',
+                translateY : -20,
+                zIndex : 1900,
+                visible : false
+            },
+            api : {
+                serviceType : "NBLOG",
+                serviceId : blogId
+            }
+        };
+        this.influencerSDK.initialize(elInf, oInfOptions);
+    },
+
+    _setEvents : function() {
+        $Fn(this.toggleBarWithThrottling, this).attach(window, 'scroll');
+        $Fn(this._toggleSideAreaWithDataLoadIfNeed, this).attach(this.elBtnCategory, 'click');
+        $Fn(this._onClick, this).attach(window, 'click');
+    },
+
+    toggleBarWithThrottling : function () {
+        if (!this.scrollTimer) {
+            this.scrollTimer = setTimeout($Fn(function () {
+                    this.scrollTimer = null;
+                    this._toggleBottomFloatingBar();
+                    this._toggleFloatingBar();
+                    this._toggleInfLayer();
+            }, this).bind(), 200)
+        }
+    },
+
+    _toggleInfLayer: function () {
+        if (this.influencerSDK == undefined) {
+            return;
+        }
+
+        var beforeScrollTop = this._scrollBefore;
+
+        // 초기 로딩시와 본문영역 위일 경우 노출한다.
+        if (beforeScrollTop === null || $Document().scrollPosition().top < this._getTargetScrollTop()) {
+            this._scrollBefore = window.scrollY;
+            this.influencerSDK.toggle(true);
+            return;
+        }
+
+        if (this.postFooter != null) {
+            if (this._isScrolledUnderView(this.postFooter)) {
+                // scroll direction
+                this._scrollBefore = window.scrollY;
+                if (beforeScrollTop < this._scrollBefore) {
+                    // down
+                    this.influencerSDK.toggle(true);
+                } else {
+                    // up
+                    this.influencerSDK.toggle(false);
+                }
+                return;
+            }
+        }
+
+        this.influencerSDK.toggle(false);
+
+        this._scrollBefore = $Document().scrollPosition().top;
+    },
+
+    _isScrolledOverView : function (el) {
+        var rect = el.getBoundingClientRect();
+        var elemTop = rect.top;
+        var elemBottom = rect.bottom;
+        if (elemTop > 0) {
+            return true;
+        }
+        var isVisible = (elemTop <= 0) && (elemBottom <= window.innerHeight);
+        return isVisible;
+    },
+
+    _isScrolledUnderView : function (el) {
+        var rect = el.getBoundingClientRect();
+        var elemTop = rect.top;
+        var elemBottom = rect.bottom;
+        if(elemTop < 0) {
+            return true;
+        }
+        var isVisible = (elemTop >= 0) && (elemBottom <= window.innerHeight);
+        return isVisible;
+    },
+
+    _toggleBottomFloatingBar : function() {
+        var floatingBottom = $Element(this.elFloatingBottom);
+        if(!floatingBottom || floatingBottom == undefined) {
+            return;
+        }
+
+        if (this._isScrolledUnderView($("post_footer_contents"))) {
+            if (floatingBottom.hasClass('fade_in')) {
+                floatingBottom.removeClass('fade_in');
+                this._hideSocialPluginLayer();
+            }
+            return;
+        }
+        if ($Document().scrollPosition().top > this._getTargetScrollTop()) {
+            if (!floatingBottom.hasClass('fade_in')) {
+                floatingBottom.addClass('fade_in');
+                //this._hideSocialPluginLayer();
+            }
+        } else {
+            if (floatingBottom.hasClass('fade_in')) {
+                floatingBottom.removeClass('fade_in');
+                this._hideSocialPluginLayer();
+            }
+        }
+    },
+
+    _hideSocialPluginLayer: function () {
+        if (!this.elFloatingBottom || this.elFloatingBottom == undefined) {
+            return;
+        }
+        var spiNodeList = this.elFloatingBottom.querySelectorAll(".spi_lst_release");
+        if (window.__splugin && window.__splugin != undefined && spiNodeList.length > 0) {
+            window.__splugin.hide();
+        }
+    },
+
+    _toggleFloatingBar : function() {
+        var $floatingHeader = $Element(this.elFloatingHeader);
+        var $floatingCategory = $Element(this.elFloatingSideArea);
+        var $btnCategory = $Element(this.elBtnCategory);
+        var $buddyRecommendLayer = $Element(this.eBuddyRecommendLayer);
+        var $reputationLayer = $ElementList(this.eReputationLayer);
+
+        if ($Document().scrollPosition().top > this._getTargetScrollTop()) {
+            if (!$floatingHeader.hasClass('fade_in')) {
+                $floatingHeader.addClass('fade_in');
+                $reputationLayer.addClass('move_bottom');
+                this.isMoveFisrtTab = false;
+            }
+        } else {
+            if ($floatingHeader.hasClass('fade_in')) {
+                $floatingHeader.removeClass('fade_in');
+                $buddyRecommendLayer.removeClass('move_left');
+                $reputationLayer.removeClass('move_bottom');
+                $reputationLayer.removeClass('move_left');
+            }
+            if ($floatingCategory.hasClass('fade_in')) {
+                $floatingCategory.removeClass('fade_in');
+                $btnCategory.removeClass('is_active');
+                $btnCategory.attr('aria-label', '카테고리 열기');
+                $buddyRecommendLayer.removeClass('move_left');
+                $reputationLayer.removeClass('move_bottom');
+                $reputationLayer.removeClass('move_left');
+                this.showSideArea = false;
+            }
+            if (floatingSearch.isOpenAutoComplete()) {
+                floatingSearch.autoCompleteHide()
+            }
+        }
+    },
+
+    _toggleSideAreaWithDataLoadIfNeed : function(evt) {
+        if (!this.sideAreaDataLoaded) {
+            this._loadFloatingSideAreaInfo(evt);
+        } else {
+            this._toggleSideArea(evt);
+        }
+    },
+
+    _toggleSideArea : function(evt) {
+        var $floatingCategory = $Element(this.elFloatingSideArea);
+        var $btnCategory = $Element(this.elBtnCategory);
+        var $buddyRecommendLayer = $Element(this.eBuddyRecommendLayer);
+        var $reputationLayer = $ElementList(this.eReputationLayer);
+
+        if ($floatingCategory.hasClass('fade_in')) {
+            $floatingCategory.removeClass('fade_in');
+            $btnCategory.removeClass('is_active');
+            $btnCategory.attr('aria-label', '카테고리 열기');
+
+            $buddyRecommendLayer.removeClass('move_left');
+            $reputationLayer.removeClass('move_left');
+            sendClickNlog("flt.catclose", "");
+            this.showSideArea = false;
+        } else {
+            $floatingCategory.addClass('fade_in');
+            $btnCategory.addClass('is_active');
+            $btnCategory.attr('aria-label', '카테고리 닫기');
+
+            $buddyRecommendLayer.addClass('move_left');
+            $reputationLayer.addClass('move_left');
+            this.showSideArea = true;
+            sendClickNlog("flt.catopen", "");
+        }
+    },
+
+    _openSympathyHistory : function (welT, we) {
+        var aParam = this._getParam(welT.className());
+        var targetNo = aParam[2];
+
+        var el = $("sympathyFrm" + targetNo);
+        if (el && el.style.display != "none") {
+            scrollTo(0, $Element('Sympathy' + targetNo).offset().top - 47);
+            return;
+        }
+
+        postView.cmtControl(aParam[0], aParam[1], aParam[2], aParam[3], aParam[4], null, true, we);
+        scrollTo(0, $Element('Sympathy' + targetNo).offset().top - 47);
+    },
+
+    /**
+     * onclick attribbute에서 바로 이벤트를 받아 호출할 수 있는 클래스
+     */
+    openSympathyHistory : function(ch, no, logNo, blockType, e) {
+        var targetNo = logNo;
+
+        var el = $("sympathyFrm" + targetNo);
+        if (el && el.style.display != "none") {
+            scrollTo(0, $Element('Sympathy' + targetNo).offset().top - 47);
+            return;
+        }
+
+        postView.cmtControl(ch, no, logNo, blockType, null, null, true, $Event(e));
+        scrollTo(0, $Element('Sympathy' + targetNo).offset().top - 47);
+    },
+
+    _openComment : function (welT, we) {
+        var aParam = this._getParam(welT.className());
+        var targetNo = aParam[2];
+        var el = $("naverComment_201_" + targetNo + "_ct");
+        if (el && el.style.display == "block") {
+            scrollTo(0, $Element('Comi' + targetNo).offset().top - 47);
+            return;
+        }
+
+        postView.cmtControl(aParam[0], aParam[1], aParam[2], aParam[3], aParam[4], null, true, we);
+    },
+
+    _onClick : function(evt) {
+        var el = evt.element;
+        var wel = $Element(el);
+        var elT = utility.getElement(el, 'a') || el;
+        var welT = $Element(elT);
+
+        if (welT.hasClass("_floating_bottom_btn_comment")) {
+            this._openComment(welT, evt);
+            return false;
+        }
+        if(welT.hasClass("_floating_sympathy_history")) {
+            this._openSympathyHistory(welT, evt);
+            return false;
+        }
+
+        if (!this.showSideArea) {
+            return;
+        }
+
+        var $sideAreaParents = $Element(evt.element).parent(function(v){
+            return v.hasClass('floating_category');
+        });
+
+        var $btnCategoryParents = $Element(evt.element).parent(function(v){
+            return v.hasClass('floating_area_btn_category_parent');
+        });
+
+
+        if ($btnCategoryParents.length === 0 && $sideAreaParents.length === 0) {
+            this._toggleSideArea(evt);
+        }
+    },
+
+    _getTargetScrollTop : function() {
+        try {
+            var $elFirstPost = $Element(this.elFristPostDiv);
+            var editorVersion = parseInt($elFirstPost.attr('data-post-editor-version'));
+            if (this._isSupportSE3(editorVersion)) {
+                var $title_se3 = $elFirstPost.child(function (v) {
+                    return v.hasClass('se_documentTitle') || v.hasClass('se-documentTitle');
+                })[0];
+
+                return $title_se3.offset().top + $title_se3.height();
+            } else if (editorVersion < this.smartEditor3Ver) {
+                var $title_se2 = $elFirstPost.child(function (v) {
+                    return v.hasClass('htitle');
+                })[0];
+
+                return $title_se2.offset().top + $title_se2.height();
+            }
+        } catch (e) {
+            //플로팅바 노출을 위한 위치 확인이 안되는 경우(글이 없다거나)
+            return -1;
+        }
+    },
+    
+    _isSupportSE3 : function(editorVersion){
+        return editorVersion === this.smartEditor3Ver ||  editorVersion === this.smartEditor4Ver;
+    },
+
+    _loadFloatingSideAreaInfo : function (evt) {
+        var apiUrl = '/FloatingSideAreaInfoAsync.naver?blogId=' + blogId + '&selectCategoryNo=' + currentCategoryNo + '&viewDate='+viewDate;
+        new $Ajax(apiUrl, {
+            'method': 'post',
+            'onerror': function () {
+                alert('요청이 일시적으로 정상처리되지 못했습니다.\n잠시 후에 다시 시도해 주세요.');
+            },
+            'onload': $Fn(function (oRes) {
+                if (typeof oRes != 'undefined' && !!oRes.text()) {
+                    $Element(this.elFloatingSideArea).appendHTML(oRes.text());
+                    this._toggleSideArea(evt);
+                    this.sideAreaDataLoaded = true;
+                    this._attachBuddyAddEvent();
+                } else {
+                    alert('요청이 일시적으로 정상처리되지 못했습니다.\n잠시 후에 다시 시도해 주세요.');
+                }
+            }, this).bind()
+        }).request();
+    },
+
+    _attachBuddyAddEvent : function () {
+        var elBuddyBtn = $$.getSingle('._floating_buddy_popup_btn');
+        if (elBuddyBtn) {
+            $Fn(this._buddyAddPopUp, this).attach(elBuddyBtn, 'click');
+        }
+    },
+
+    _buddyAddPopUp : function () {
+        if (typeof readOnlyStatusAll != 'undefined' && readOnlyStatusAll) {
+            alert(readOnlyLinkErrorMsg);
+            return;
+        }
+
+        profile.addBuddyPop();
+    },
+
+    isSideCategoryAreaOpen : function () {
+        var $floatingCategory = $Element(this.elFloatingSideArea);
+        return $floatingCategory.hasClass('fade_in');
+    },
+
+    _getParam: function(sClassName){
+        if (sClassName) {
+            var rxParameter = /_param\((.*)\)/;
+            var aMatch = sClassName.match(rxParameter);
+            if (aMatch && aMatch[0] && aMatch[1]) {
+                return aMatch[1].split("|");
+            }
+        }
+        return null;
+    }
+});
+
+var floatingBarArea = new FloatingBarArea();

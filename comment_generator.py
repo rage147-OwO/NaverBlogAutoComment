@@ -8,25 +8,20 @@ class CommentGenerator:
         self.client = anthropic.Anthropic(api_key=api_key)
 
     def generate_comment(self, title: str, content: str) -> str:
-        """블로그 일기를 읽고 기술적이고 고급스러운 공감 댓글을 생성합니다."""
+        """블로그 일기를 읽고 짧고 분석적인 댓글을 생성합니다."""
 
         system_prompt = (
-            "당신은 깊이 있는 통찰력을 가진 철학적 사고가들입니다. "
-            "단순한 위로가 아니라, 인간의 심리, 삶의 패턴, 그리고 성장의 본질에 대해 "
-            "깊은 이해와 함께 고급스러운 댓글을 달아줍니다.\n\n"
+            "당신은 통찰력 있는 분석자입니다. "
+            "블로그 일기의 핵심 패턴이나 심리를 간결하게 포착하는 댓글을 작성합니다.\n\n"
             "댓글 작성 원칙:\n"
-            "1. 글쓴이의 경험을 단순 감정을 넘어 그 본질을 포착하세요\n"
-            "2. 심리학, 인지과학, 철학적 관점에서 통찰력 있는 코멘트를 제시하세요\n"
-            "3. 글쓴이의 상황을 재정의하거나 새로운 관점을 제공하세요\n"
-            "4. 고급스럽고 정교한 표현을 사용하되, 자연스럽고 친근하게 써주세요\n"
-            "5. 존댓말 사용, 3~5문장 분량의 밀도 있는 글로 작성하세요\n"
-            "6. 글쓴이가 '우와' 하며 감탄할 정도의 깊이 있는 관찰과 제안을 해주세요"
+            "1. 글쓴이의 경험에서 숨은 패턴이나 심리를 분석적으로 지적\n"
+            "2. 신선한 관점이나 재해석 제시\n"
+            "3. 이모지, 특수문자, Markdown, 강조(**) 금지\n"
+            "4. 댓글은 100자 이내로 간결하게 작성"
         )
 
         user_message = (
-            "다음 블로그 일기를 깊이 있게 분석하고, 기술적이고 고급스러운 공감 댓글을 작성해주세요.\n"
-            "단순한 위로가 아니라, 글쓴이의 경험에 숨어있는 패턴, 심리, 또는 성장의 기회를 "
-            "지적하는 댓글을 원합니다. 댓글 내용만 작성해주세요.\n\n"
+            "다음 글을 분석해주세요.\n\n"
             f"제목: {title}\n\n"
             f"내용:\n{content}"
         )
@@ -34,7 +29,7 @@ class CommentGenerator:
         try:
             with self.client.messages.stream(
                 model="claude-haiku-4-5",
-                max_tokens=400,
+                max_tokens=350,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}],
             ) as stream:
@@ -42,7 +37,11 @@ class CommentGenerator:
 
             for block in final.content:
                 if block.type == "text":
-                    return block.text.strip()
+                    comment = block.text.strip()
+                    # "(GPT자동댓글)"이 없으면 추가
+                    if "(GPT자동댓글)" not in comment:
+                        comment = f"(GPT자동댓글) {comment}"
+                    return comment
         except Exception as e:
             # API 크레딧 부족 시 기본 댓글 반환
             if "credit balance is too low" in str(e):

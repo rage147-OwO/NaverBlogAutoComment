@@ -1,0 +1,1 @@
+!function(t,n){n=n||"ntm";window["ntm_"+t]=n,window[n]=window[n]||[],window[n].push({"ntm.start":+new Date});t=document.getElementsByTagName("script")[0],n=document.createElement("script");n.async=!0,n.src="https://ntm.pstatic.net/scripts/ntm_f39b725261fc.js",t.parentNode.insertBefore(n,t)}("f39b725261fc","ntm");

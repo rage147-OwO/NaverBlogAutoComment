@@ -1,0 +1,1 @@
+!function(t,n){n=n||"ntm";window["ntm_"+t]=n,window[n]=window[n]||[],window[n].push({"ntm.start":+new Date});t=document.getElementsByTagName("script")[0],n=document.createElement("script");n.async=!0,n.src="https://ntm.pstatic.net/scripts/ntm_d26044233161.js?v=1.3.0-rc7",t.parentNode.insertBefore(n,t)}("d26044233161","ntm_blog_web");

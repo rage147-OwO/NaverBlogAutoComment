@@ -1,0 +1,440 @@
+/*
+ * @(#)LayerPopup.js 2017. 02. 02
+ *
+ * Copyright 2017 NAVER Corp. All rights Reserved.
+ * NAVER PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
+ *
+ */
+
+/**
+ * Created by Naver on 2017-01-10.
+ */
+
+/**
+ * 화면 가이드
+ * https://app.zeplin.io/project.html#pid=57bae6b223123e687a8828e2&sid=587315984eefe1b95ee986dc
+ * http://view.gitlab2.uit.nhncorp.com/BLOG/m.blog/raw/feature/lyr_popup/src/05_lyr_popup1.html#
+ */
+
+/**
+ * param = {
+ *  title : ''
+ *  message : ''
+ *  buttonList : [
+ *      {title:'' ,className:'' , action : kind of function}
+ *  ]
+ * }
+ * */
+var popupLayer = function(param){
+   var layerId = '_popupLayer';
+
+    if(document.getElementById(layerId)){
+        return;
+    }
+
+    var title = param.title;
+    var message = param.message;
+    var buttonList = param.buttonList;
+
+    var buttonHTML = '';
+    for(i=0;i<buttonList.length;i++){
+        buttonHTML += '<a href="#" class="'+buttonList[i].className+'" id="_popupLayerGo'+i+'">'+buttonList[i].title+'</a>';
+    }
+
+    var markup = [
+        '<div class="g_dimmed _g_dimmed" style="display: block;"></div>',
+        '<div class="lyr_popup" id="lyr1" style="display: block;">',
+            '<div class="lyr_cont lyr_alert">',
+                '<div class="txt_area">',
+                    '<strong class="tit">',title,'</strong>',
+                    '<p class="dsc">',message,'</p>',
+                '</div>',
+                '<div class="btn_area">',
+                    buttonHTML,
+                '</div>',
+            '</div>',
+        '</div>'
+    ].join('');
+
+    var popupLayerDiv= document.createElement('div');
+    popupLayerDiv.id=layerId;
+    popupLayerDiv.innerHTML = markup;
+    document.body.appendChild(popupLayerDiv);
+
+    var addedDiv = document.getElementById(layerId);
+
+    for(i=0;i<buttonList.length;i++){
+        (function(index) {
+            var button = buttonList[index];
+            var popupLayerGo = document.getElementById("_popupLayerGo"+index);
+
+            popupLayerGo.addEventListener('click',function(event){
+                event.preventDefault();
+                addedDiv.parentNode.removeChild(addedDiv);
+                enableTouchEvent();
+                if(typeof button.action === "function"){
+                    button.action();
+                }
+            }, false);
+        })(i);
+
+    }
+
+    disableTouchEvent();
+};
+
+/***
+ * confirm 대체할 layer
+ * ios safari에서 input, textarea, search type에 focus가 있어 키패드가 올라와있는 경우,
+ * 레이어가 제대로 노출되지 않아, layer 띄우기전 focus 제거가 필요한 경우 element받아 처리 
+ */
+var confirmLayer = function(message, okFn, cancelFn , element, layerOptions){
+    var layerId = '_confirmLayer';
+
+    if(document.getElementById(layerId)){
+        return;
+    }
+
+    if(element){
+        element.blur();
+    }
+
+    layerOptions = layerOptions || {};
+    cancelButtonMessage = layerOptions.cancelButtonMessage || "취소";
+    okButtonMessage = layerOptions.okButtonMessage || "확인";
+    titleHtml = '';
+    wrapClassName = layerOptions.wrapClassName || "lyr_popup";
+    descClassName = layerOptions.descClassName || "dsc";
+    okButtonClassName = layerOptions.okButtonClassName || "btn_50 green";
+    cancelButtonClassName = layerOptions.cancelButtonClassName || "btn_50";
+    cancelButtonWithUiChange = (typeof layerOptions.cancelButtonWithUiChange != 'undefined') ? layerOptions.cancelButtonWithUiChange : true;
+
+    if (layerOptions.title) {
+        titleHtml = '<strong class="tit">' + layerOptions.title + '</strong>';
+    }
+
+    var markup = [
+        '<div class="g_dimmed _g_dimmed" style="display: block;"></div>',
+            '<div class="'+wrapClassName+'" id="lyr4" style="">',
+                '<div class="lyr_cont lyr_alert">',
+                    '<div class="txt_area">',
+                        titleHtml,
+                        '<p class="' + descClassName + '">',message,'</p>',
+                    '</div>',
+                '<div class="btn_area">',
+                    '<a href="#" class="'+cancelButtonClassName+'" id="_confirmLayercancel">' + cancelButtonMessage + '</a>',
+                    '<a href="#" class="'+okButtonClassName+'" id="_confirmLayerOk">' + okButtonMessage + '</a>',
+                '</div>',
+            '</div>',
+        '</div>'
+    ].join('');
+
+
+    var confirmLayerDiv= document.createElement('div');
+    confirmLayerDiv.id=layerId;
+    confirmLayerDiv.innerHTML = markup;
+    document.body.appendChild(confirmLayerDiv);
+
+    var confirmOk = document.getElementById("_confirmLayerOk");
+    var confirmCancel = document.getElementById("_confirmLayercancel");
+    var addedDiv = document.getElementById(layerId);
+
+    confirmOk.addEventListener('click',function(event){
+        event.preventDefault();
+        enableTouchEvent();
+        enableScrollEvent();
+        addedDiv.parentNode.removeChild(addedDiv);
+        document.body.classList.remove("disable-overflow");
+
+
+        if(!okFn){
+           return;
+        }
+
+        okFn();
+    }, false);
+
+   confirmCancel.addEventListener('click',function(event){
+       event.preventDefault();
+       if (cancelButtonWithUiChange) {
+           enableTouchEvent();
+           enableScrollEvent();
+           addedDiv.parentNode.removeChild(addedDiv);
+           document.body.classList.remove("disable-overflow");
+       }
+
+       if(!cancelFn){
+           return;
+       }
+
+       cancelFn();
+    }, false);
+
+    disableTouchEvent();
+    disableScrollEvent();
+    // 다른 js에 의해서 overflow가 overwrite되는 경우가 있어 필요한경우 disable-overflow 클래스를 정의해 사용할수 있도록 함
+    document.body.classList.add("disable-overflow");
+};
+
+/**
+ * alert대체할 layer
+ * todo: 마크업 나오면 제목 처리 필요
+* */
+var alertLayer = function(message , fn , element){
+    var layerId = '_alertLayer';
+
+    if(document.getElementById(layerId)){
+        return;
+    }
+
+    if(element){
+        element.blur();
+    }
+
+    var markup = [
+        '<div class="g_dimmed _g_dimmed" style="display: block;"></div>',
+        '<div class="lyr_popup" id="lyr6" style="display: block;">',
+            '<div class="lyr_cont lyr_alert">',
+                '<div class="txt_area"><p class="dsc">',message,'</p></div>',
+                '<div class="btn_area"><a href="#" class="btn_100" id="_alertLayerClose">닫기</a></div>',
+            '</div>',
+        '</div>'
+    ].join('');
+
+    var alertLayerDiv= document.createElement('div');
+    alertLayerDiv.id=layerId;
+    alertLayerDiv.innerHTML = markup;
+    document.body.appendChild(alertLayerDiv);
+
+    var alertClose = document.getElementById("_alertLayerClose");
+    var addedDiv = document.getElementById(layerId);
+
+    alertClose.addEventListener('click',function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        enableTouchEvent();
+        addedDiv.parentNode.removeChild(addedDiv);
+
+        if(!fn){
+            return;
+        }
+
+        fn();
+
+    }, false);
+
+    disableTouchEvent();
+};
+
+/**
+ * alert Layer 제거
+ */
+var alertLayerClose = function(){
+    var addedDiv = document.getElementById('_alertLayer');
+    if(!addedDiv){
+        return;
+    }
+    enableTouchEvent();
+    addedDiv.parentNode.removeChild(addedDiv);
+};
+
+/**
+ * 마켓 탈퇴 알람 레이어 Open
+ * */
+var alertMarketLayer = function(title, message , fn , element){
+    var layerId = '_alertMarketLayer';
+
+    if(document.getElementById(layerId)){
+        return;
+    }
+
+    if(element){
+        element.blur();
+    }
+
+    var markup = [
+        '<div class="g_dimmed _g_dimmed" style="display: block;"></div>',
+        '<div class="lyr_popup" id="lyr21" style="display: block;">',
+        '<div class="lyr_cont lyr_alert">',
+        '<div class="txt_area"><strong class="tit">',title,'</strong><p class="dsc">',message,'</p></div>',
+        '<div class="btn_area"><a href="#" class="btn_100" id="_alertMarketLayerClose">확인</a></div>',
+        '</div>',
+        '</div>'
+    ].join('');
+
+    var alertLayerDiv= document.createElement('div');
+    alertLayerDiv.id=layerId;
+    alertLayerDiv.innerHTML = markup;
+    document.body.appendChild(alertLayerDiv);
+
+    var alertClose = document.getElementById("_alertMarketLayerClose");
+    var addedDiv = document.getElementById(layerId);
+
+    alertClose.addEventListener('click',function(event){
+        event.preventDefault();
+        enableTouchEvent();
+        addedDiv.parentNode.removeChild(addedDiv);
+
+        if(!fn){
+            return;
+        }
+
+        fn();
+
+    }, false);
+
+    disableTouchEvent();
+};
+
+/**
+ * 블로그 주소 변경 불가 안내 알람 레이어 Open
+ * */
+var alertInvalidBlogIdLayer = function (confirmCallbackFn, closeCallbackFn, element) {
+    var layerId = '_alertInvalidBlogIdLayer';
+
+    if(document.getElementById(layerId)){
+        return;
+    }
+
+    if(element){
+        element.blur();
+    }
+
+    var markup = [
+        '<div class="alert_layer_popup" style="display: flex;">',
+        '<div class="caution_content">',
+        '<i class="caution_icon"></i>',
+        '<div class="text_area">',
+        '<strong class="title">블로그 주소 변경 불가 안내</strong>',
+        '<p class="desc">',
+        '블로그 마켓 판매자의 이력 관리를 위해<br>',
+        '블로그 주소 변경이 불가합니다.',
+        '</p>',
+        '</div>',
+        '<div class="btn_area">',
+        '<a id="_alertInvalidBlogIdLayerConfirm" href="#" class="green_btn">자세히 보기</a>',
+        '<button id="_alertInvalidBlogIdLayerClose" type="button" class="close_btn">닫기</button>',
+        '</div>',
+        '</div>',
+        '</div>',
+    ].join('');
+
+    var alertLayerDiv= document.createElement('div');
+    alertLayerDiv.id=layerId;
+    alertLayerDiv.innerHTML = markup;
+    document.body.appendChild(alertLayerDiv);
+
+    var alertConfirm = document.getElementById("_alertInvalidBlogIdLayerConfirm");
+    var alertClose = document.getElementById("_alertInvalidBlogIdLayerClose");
+    var addedDiv = document.getElementById(layerId);
+
+    alertConfirm.addEventListener('click',function(event){
+        event.preventDefault();
+        enableTouchEvent();
+        addedDiv.parentNode.removeChild(addedDiv);
+
+        if(confirmCallbackFn){
+            confirmCallbackFn();
+        }
+    }, false);
+
+    alertClose.addEventListener('click',function(event){
+        event.preventDefault();
+        enableTouchEvent();
+        addedDiv.parentNode.removeChild(addedDiv);
+
+        if(closeCallbackFn){
+            closeCallbackFn();
+        }
+
+    }, false);
+
+    disableTouchEvent();
+};
+
+var promptLayer = function(message,defaultValue, okFn, cancelFn){
+    var layerId = '_promptLayer';
+
+    if(document.getElementById(layerId)){
+        return;
+    }
+
+    var markup = [
+        '<div class="g_dimmed _g_dimmed" style="display: block;"></div>',
+        '<div class="lyr_popup" id="lyr8" style="">',
+            '<div class="lyr_cont lyr_alert">',
+                '<div class="copy_url">',
+                    '<p class="dsc">',message,'</p>',
+                    '<input typy="text" id="_promptLayerInput" class="url" value="" onfocus="this.setSelectionRange(0,this.value.length);">',
+                '</div>',
+                '<div class="btn_area">',
+                        '<a href="#" class="btn_50" id="_promptLayerCancel">취소</a>',
+                        '<a href="#" class="btn_50 green" id="_promptLayerOk">확인</a>',
+                '</div>',
+            '</div>',
+        '</div>'
+    ].join('');
+
+    var promptLayerDiv= document.createElement('div');
+    promptLayerDiv.id=layerId;
+    promptLayerDiv.innerHTML = markup;
+    document.body.appendChild(promptLayerDiv);
+
+    var promptOk = document.getElementById("_promptLayerOk");
+    var promptCancel = document.getElementById("_promptLayerCancel");
+    var inputBox = document.getElementById("_promptLayerInput");
+    var addedDiv = document.getElementById(layerId);
+
+    if(defaultValue !="") {
+        inputBox.value = defaultValue;
+    }
+
+    promptOk.addEventListener('click',function(event){
+        event.preventDefault();
+        var input = inputBox.value;
+        addedDiv.parentNode.removeChild(addedDiv);
+        enableTouchEvent();
+
+        if(!okFn){
+            return;
+        }
+
+        okFn(input);
+
+    }, false);
+
+    promptCancel.addEventListener('click',function(event){
+        event.preventDefault();
+        addedDiv.parentNode.removeChild(addedDiv);
+        enableTouchEvent();
+
+        if(!cancelFn){
+            return;
+        }
+
+        cancelFn();
+    }, false);
+
+    disableTouchEvent();
+    inputBox.focus();
+};
+
+var handleEvent = function(event){
+    event.preventDefault();
+};
+
+var disableTouchEvent = function(){
+    document.addEventListener('touchmove',handleEvent);
+};
+
+var enableTouchEvent = function(){
+    document.removeEventListener('touchmove',handleEvent);
+};
+
+var disableScrollEvent = function(){
+    document.body.style.overflow = 'hidden';
+};
+
+var enableScrollEvent = function(){
+    document.body.style.overflow = '';
+};
